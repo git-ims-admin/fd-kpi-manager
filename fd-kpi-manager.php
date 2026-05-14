@@ -441,7 +441,6 @@ function fd_kpi_sanitize_record( array $raw ): array {
                 foreach ( $g['kpis'] as $k ) {
                     $group['kpis'][] = [
                         'master_id'        => absint( $k['master_id']        ?? 0 ),
-                        'last_year_goal'   => sanitize_text_field( $k['last_year_goal']   ?? '' ),
                         'last_year_actual' => sanitize_text_field( $k['last_year_actual'] ?? '' ),
                         'this_year_goal'   => sanitize_text_field( $k['this_year_goal']   ?? '' ),
                     ];
@@ -567,30 +566,33 @@ function fd_kpi_render_frontend( array $data ) {
 
         // KPI テーブル
         if ( ! empty( $kpis ) ) {
+            $fy           = fd_kpi_fiscal_year();
+            $label_actual = ( $fy - 1 ) . '年度実績';
+            $label_goal   = $fy . '年度目標';
+
             echo '<h3 class="' . esc_attr( $h3_class ) . ' fd-kpi-kpi-heading">KPI</h3>';
             echo '<div class="fd-kpi-table-wrap"><figure class="wp-block-table is-style-vk-table-border">';
             echo '<table>';
             echo '<thead><tr>';
-            echo '<th>評価項目</th><th>昨年度目標</th><th>昨年度実績</th><th>本年度目標</th>';
+            echo '<th>評価項目</th>'
+               . '<th>' . esc_html( $label_actual ) . '</th>'
+               . '<th>' . esc_html( $label_goal )   . '</th>';
             echo '</tr></thead><tbody>';
 
             foreach ( $kpis as $kpi ) {
                 $master_id   = isset( $kpi['master_id'] ) ? absint( $kpi['master_id'] ) : 0;
                 $kpi_title   = $master_id ? get_the_title( $master_id ) : '';
-                $last_goal   = $kpi['last_year_goal']   ?? '';
                 $last_actual = $kpi['last_year_actual'] ?? '';
                 $this_goal   = $kpi['this_year_goal']   ?? '';
 
                 echo '<tr>';
                 echo '<td>' . esc_html( $kpi_title )   . '</td>';
-                echo '<td>' . esc_html( $last_goal )   . '</td>';
                 echo '<td>' . esc_html( $last_actual ) . '</td>';
                 echo '<td>' . esc_html( $this_goal )   . '</td>';
                 echo '</tr>';
 
                 $all_kpis[] = [
                     'title'       => $kpi_title,
-                    'last_goal'   => $last_goal,
                     'last_actual' => $last_actual,
                     'this_goal'   => $this_goal,
                 ];
@@ -601,6 +603,9 @@ function fd_kpi_render_frontend( array $data ) {
 
     // KPIの公表（集約テーブル）
     if ( ! empty( $all_kpis ) ) {
+        $fy           = fd_kpi_fiscal_year();
+        $label_actual = ( $fy - 1 ) . '年度実績';
+        $label_goal   = $fy . '年度目標';
         ?>
         <h2 class="<?php echo esc_attr( $h2_class ); ?> fd-kpi-disclosure-heading">KPIの公表</h2>
         <p class="fd-kpi-disclosure-lead">
@@ -612,16 +617,14 @@ function fd_kpi_render_frontend( array $data ) {
                 <thead>
                     <tr>
                         <th>評価項目</th>
-                        <th>昨年度目標</th>
-                        <th>昨年度実績</th>
-                        <th>本年度目標</th>
+                        <th><?php echo esc_html( $label_actual ); ?></th>
+                        <th><?php echo esc_html( $label_goal );   ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ( $all_kpis as $kpi ) : ?>
                     <tr>
                         <td><?php echo esc_html( $kpi['title'] );       ?></td>
-                        <td><?php echo esc_html( $kpi['last_goal'] );   ?></td>
                         <td><?php echo esc_html( $kpi['last_actual'] ); ?></td>
                         <td><?php echo esc_html( $kpi['this_goal'] );   ?></td>
                     </tr>
@@ -635,7 +638,20 @@ function fd_kpi_render_frontend( array $data ) {
 }
 
 /* ============================================================
-   12. フロントエンド CSS 読み込み
+   12. 年度算出ヘルパー（4月起算）
+   ============================================================ */
+/**
+ * 現在の「本年度」を返す（4月起算）
+ * 例）2026年5月 → 2026、2026年2月 → 2025
+ */
+function fd_kpi_fiscal_year(): int {
+    $month = (int) date_i18n( 'n' );
+    $year  = (int) date_i18n( 'Y' );
+    return $month >= 4 ? $year : $year - 1;
+}
+
+/* ============================================================
+   13. フロントエンド CSS 読み込み
    ============================================================ */
 add_action( 'wp_enqueue_scripts', 'fd_kpi_frontend_styles' );
 function fd_kpi_frontend_styles() {
@@ -872,9 +888,11 @@ function fd_kpi_render_approach( $g_idx, $a_idx, $approach, $is_tpl = false ) {
 
 function fd_kpi_render_kpi_row( $g_idx, $k_idx, $kpi, $kpi_masters, $is_tpl = false ) {
     $selected_id = $kpi['master_id']        ?? '';
-    $last_goal   = $kpi['last_year_goal']   ?? '';
     $last_actual = $kpi['last_year_actual'] ?? '';
     $this_goal   = $kpi['this_year_goal']   ?? '';
+    $fy          = fd_kpi_fiscal_year();
+    $label_actual = ( $fy - 1 ) . '年度実績';
+    $label_goal   = $fy . '年度目標';
     ?>
     <div class="fd-kpi-row"
          style="border:1px dashed #ccd0d4;border-radius:4px;padding:10px;margin-bottom:8px;">
@@ -899,16 +917,7 @@ function fd_kpi_render_kpi_row( $g_idx, $k_idx, $kpi, $kpi_masters, $is_tpl = fa
                 </td>
             </tr>
             <tr>
-                <th><label>昨年度目標</label></th>
-                <td>
-                    <input type="text"
-                           name="fd_kpi[groups][<?php echo esc_attr( $g_idx ); ?>][kpis][<?php echo esc_attr( $k_idx ); ?>][last_year_goal]"
-                           value="<?php echo esc_attr( $last_goal ); ?>"
-                           style="width:200px;"/>
-                </td>
-            </tr>
-            <tr>
-                <th><label>昨年度実績</label></th>
+                <th><label><?php echo esc_html( $label_actual ); ?></label></th>
                 <td>
                     <input type="text"
                            name="fd_kpi[groups][<?php echo esc_attr( $g_idx ); ?>][kpis][<?php echo esc_attr( $k_idx ); ?>][last_year_actual]"
@@ -917,7 +926,7 @@ function fd_kpi_render_kpi_row( $g_idx, $k_idx, $kpi, $kpi_masters, $is_tpl = fa
                 </td>
             </tr>
             <tr>
-                <th><label>本年度目標</label></th>
+                <th><label><?php echo esc_html( $label_goal ); ?></label></th>
                 <td>
                     <input type="text"
                            name="fd_kpi[groups][<?php echo esc_attr( $g_idx ); ?>][kpis][<?php echo esc_attr( $k_idx ); ?>][this_year_goal]"
