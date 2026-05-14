@@ -1,0 +1,55 @@
+/* fd-kpi-manager / admin.css */
+
+#fd-kpi-wrap {
+    padding: 8px 0;
+}
+
+#fd-kpi-wrap .fd-kpi-base-table th {
+    width: 160px;
+    padding: 12px 8px;
+}
+
+#fd-kpi-wrap .fd-kpi-base-table td {
+    padding: 8px;
+}
+
+/* グループカード */
+.fd-kpi-group {
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    transition: box-shadow .2s;
+}
+
+.fd-kpi-group:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,.14);
+}
+
+/* 取り組み行 */
+.fd-approach-row input[type="text"] {
+    border-radius: 3px;
+}
+
+/* KPI行 */
+.fd-kpi-row {
+    background: #f9f9f9;
+}
+
+.fd-kpi-row .form-table th {
+    width: 130px;
+    font-weight: 500;
+    padding: 8px;
+}
+
+.fd-kpi-row .form-table td {
+    padding: 6px 8px;
+}
+
+/* ボタン調整 */
+#fd-kpi-add-group {
+    font-size: 14px;
+    padding: 6px 18px;
+}
+
+.fd-kpi-add-approach,
+.fd-kpi-add-kpi {
+    font-size: 12px;
+}
