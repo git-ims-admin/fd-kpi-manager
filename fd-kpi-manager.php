@@ -129,6 +129,7 @@ function fd_kpi_handle_admin_actions() {
         $sanitized             = fd_kpi_sanitize_record( $raw );
         $sanitized['id']       = $record_id ?: uniqid( 'fdkpi_' );
         $sanitized['title']    = sanitize_text_field( $_POST['fd_kpi_title'] ?? '' );
+        $sanitized['slug']     = sanitize_title( $_POST['fd_kpi_slug']  ?? '' );
         $sanitized['status']   = ( ( $_POST['fd_kpi_status'] ?? '' ) === 'publish' ) ? 'publish' : 'draft';
 
         // 既存レコード更新 or 末尾に追加
@@ -218,6 +219,7 @@ function fd_kpi_render_list_page() {
                     <tr>
                         <th scope="col" style="width:40px;">No.</th>
                         <th scope="col">管理タイトル</th>
+                        <th scope="col">ショートコード</th>
                         <th scope="col" style="width:80px;">ステータス</th>
                         <th scope="col" style="width:180px;">操作</th>
                     </tr>
@@ -225,7 +227,11 @@ function fd_kpi_render_list_page() {
                 <tbody>
                     <?php foreach ( $records as $i => $record ) :
                         $rid        = $record['id'];
+                        $slug       = $record['slug'] ?? '';
                         $rec_status = $record['status'] ?? 'publish';
+                        $shortcode  = $slug
+                            ? '[fd_kpi slug="' . esc_attr( $slug ) . '"]'
+                            : '<span style="color:#b32d2e;">スラッグ未設定</span>';
                         $edit_url   = admin_url(
                             'admin.php?page=fd-kpi-manager&action=edit&record_id=' . urlencode( $rid )
                         );
@@ -244,6 +250,16 @@ function fd_kpi_render_list_page() {
                                         <?php echo esc_html( $record['title'] ?: '（タイトルなし）' ); ?>
                                     </a>
                                 </strong>
+                            </td>
+                            <td>
+                                <?php if ( $slug ) : ?>
+                                    <code onclick="navigator.clipboard.writeText(this.innerText)"
+                                          title="クリックでコピー"
+                                          style="cursor:pointer;"
+                                    >[fd_kpi slug="<?php echo esc_attr( $slug ); ?>"]</code>
+                                <?php else : ?>
+                                    <span style="color:#b32d2e;font-size:12px;">スラッグ未設定</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ( $rec_status === 'publish' ) : ?>
@@ -281,6 +297,7 @@ function fd_kpi_render_edit_page() {
     $is_new    = ( $record === null );
 
     $title    = $record['title']    ?? '';
+    $slug     = $record['slug']     ?? '';
     $status   = $record['status']   ?? 'publish';
     $intro    = $record['intro']    ?? '';
     $link_url = $record['link_url'] ?? '';
@@ -321,6 +338,24 @@ function fd_kpi_render_edit_page() {
                                style="width:420px;"
                                placeholder="例：2024年度 FD方針"/>
                         <p class="description">管理画面の一覧表示用です。フロントには出力されません。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="fd_kpi_slug">スラッグ（識別キー）</label></th>
+                    <td>
+                        <input type="text" id="fd_kpi_slug" name="fd_kpi_slug"
+                               value="<?php echo esc_attr( $slug ); ?>"
+                               style="width:260px;"
+                               placeholder="例：2026 または fd-policy-2026"/>
+                        <p class="description">
+                            半角英数・ハイフンで入力してください。<br>
+                            ショートコード：
+                            <?php if ( $slug ) : ?>
+                                <code>[fd_kpi slug="<?php echo esc_attr( $slug ); ?>"]</code>
+                            <?php else : ?>
+                                スラッグを入力すると表示されます
+                            <?php endif; ?>
+                        </p>
                     </td>
                 </tr>
                 <tr>
@@ -491,7 +526,10 @@ function fd_kpi_admin_scripts( $hook ) {
    ============================================================ */
 add_shortcode( 'fd_kpi', 'fd_kpi_shortcode' );
 function fd_kpi_shortcode( $atts ) {
+    $atts    = shortcode_atts( [ 'slug' => '' ], $atts );
+    $slug    = sanitize_title( $atts['slug'] );
     $records = fd_kpi_get_records();
+
     if ( empty( $records ) ) {
         return '';
     }
@@ -499,6 +537,10 @@ function fd_kpi_shortcode( $atts ) {
     ob_start();
     foreach ( $records as $record ) {
         if ( ( $record['status'] ?? 'publish' ) !== 'publish' ) {
+            continue;
+        }
+        // slug 指定あり → 一致するレコードのみ出力
+        if ( $slug !== '' && ( $record['slug'] ?? '' ) !== $slug ) {
             continue;
         }
         fd_kpi_render_frontend( $record );
