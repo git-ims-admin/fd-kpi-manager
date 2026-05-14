@@ -424,6 +424,7 @@ function fd_kpi_sanitize_record( array $raw ): array {
             $group              = [];
             $group['heading']   = sanitize_text_field( $g['heading']   ?? '' );
             $group['principle'] = sanitize_text_field( $g['principle'] ?? '' );
+            $group['description'] = sanitize_textarea_field( $g['description'] ?? '' );
 
             $group['approaches'] = [];
             if ( ! empty( $g['approaches'] ) && is_array( $g['approaches'] ) ) {
@@ -531,10 +532,11 @@ function fd_kpi_render_frontend( array $data ) {
     $all_kpis = [];
 
     foreach ( $groups as $g_num => $group ) {
-        $heading    = $group['heading']    ?? '';
-        $principle  = $group['principle']  ?? '';
-        $approaches = $group['approaches'] ?? [];
-        $kpis       = $group['kpis']       ?? [];
+        $heading     = $group['heading']     ?? '';
+        $principle   = $group['principle']   ?? '';
+        $description = $group['description'] ?? '';
+        $approaches  = $group['approaches']  ?? [];
+        $kpis        = $group['kpis']        ?? [];
         $display_num = $g_num + 1;
 
         // H2 見出し
@@ -544,6 +546,11 @@ function fd_kpi_render_frontend( array $data ) {
             echo '（' . esc_html( $principle ) . '）';
         }
         echo '</h2>';
+
+        // 説明文（原則とh3の間）
+        if ( $description ) {
+            echo '<p class="fd-kpi-group-description">' . nl2br( esc_html( $description ) ) . '</p>';
+        }
 
         // 具体的な取り組み
         if ( ! empty( $approaches ) ) {
@@ -755,11 +762,12 @@ function fd_kpi_render_settings_page() {
        （メタボックス時代から変更なし。編集ページから呼び出す）
    ============================================================ */
 function fd_kpi_render_group( $g_idx, $group, $kpi_masters, $is_tpl = false ) {
-    $heading    = $group['heading']    ?? '';
-    $principle  = $group['principle']  ?? '';
-    $approaches = $group['approaches'] ?? [];
-    $kpis       = $group['kpis']       ?? [];
-    $principles = [ '原則2', '原則3', '原則4', '原則5', '原則6', '原則7' ];
+    $heading     = $group['heading']      ?? '';
+    $principle   = $group['principle']    ?? '';
+    $description = $group['description'] ?? '';
+    $approaches  = $group['approaches']  ?? [];
+    $kpis        = $group['kpis']        ?? [];
+    $principles  = [ '原則2', '原則3', '原則4', '原則5', '原則6', '原則7' ];
     ?>
     <div class="fd-kpi-group"
          data-group="<?php echo esc_attr( $g_idx ); ?>"
@@ -795,6 +803,17 @@ function fd_kpi_render_group( $g_idx, $group, $kpi_masters, $is_tpl = false ) {
                             </option>
                         <?php endforeach; ?>
                     </select>
+                </td>
+            </tr>
+            <tr>
+                <th><label>説明文</label></th>
+                <td>
+                    <textarea
+                        name="fd_kpi[groups][<?php echo esc_attr( $g_idx ); ?>][description]"
+                        rows="4"
+                        style="width:100%;"
+                        placeholder="方針の概要・説明文を入力（フロントに段落として出力されます）"
+                    ><?php echo esc_textarea( $description ); ?></textarea>
                 </td>
             </tr>
         </table>
