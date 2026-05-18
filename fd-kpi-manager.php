@@ -3,7 +3,7 @@
  * Plugin Name: FD方針・KPI管理プラグイン
  * Plugin URI:  https://example.com/
  * Description: 保険代理店向け「お客様本位の業務運営（FD）方針」およびKPIを管理・表示するプラグイン
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      Your Agency
  * Text Domain: fd-kpi-manager
  * License:     GPL-2.0+
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'FD_KPI_VERSION',    '1.1.0' );
+define( 'FD_KPI_VERSION',    '1.1.1' );
 define( 'FD_KPI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FD_KPI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -37,7 +37,7 @@ function fd_kpi_register_post_types() {
         ],
         'public'          => false,
         'show_ui'         => true,
-        'show_in_menu'    => 'fd-kpi-manager',   // 専用メニューの配下に表示
+        'show_in_menu'    => 'fd-kpi-manager',
         'supports'        => [ 'title' ],
         'capability_type' => 'post',
         'has_archive'     => false,
@@ -50,7 +50,6 @@ function fd_kpi_register_post_types() {
    ============================================================ */
 add_action( 'admin_menu', 'fd_kpi_admin_menu' );
 function fd_kpi_admin_menu() {
-    // トップレベルメニュー（= 一覧ページ）
     add_menu_page(
         'FD方針・KPI管理',
         'FD方針・KPI',
@@ -60,7 +59,6 @@ function fd_kpi_admin_menu() {
         'dashicons-clipboard',
         30
     );
-    // 一覧ページへの明示的なサブメニュー
     add_submenu_page(
         'fd-kpi-manager',
         'FD方針・KPI 一覧',
@@ -69,7 +67,6 @@ function fd_kpi_admin_menu() {
         'fd-kpi-manager',
         'fd_kpi_admin_page'
     );
-    // スタイル設定
     add_submenu_page(
         'fd-kpi-manager',
         'FD-KPI スタイル設定',
@@ -78,11 +75,10 @@ function fd_kpi_admin_menu() {
         'fd-kpi-styles',
         'fd_kpi_render_settings_page'
     );
-    // ※ KPIマスタは kpi_master CPT の show_in_menu でこのメニュー下に自動追加される
 }
 
 /* ============================================================
-   3. 保存・削除を admin_init で先行処理（リダイレクト前）
+   3. 保存・削除を admin_init で先行処理
    ============================================================ */
 add_action( 'admin_init', 'fd_kpi_handle_admin_actions' );
 function fd_kpi_handle_admin_actions() {
@@ -132,7 +128,6 @@ function fd_kpi_handle_admin_actions() {
         $sanitized['slug']     = sanitize_title( $_POST['fd_kpi_slug']  ?? '' );
         $sanitized['status']   = ( ( $_POST['fd_kpi_status'] ?? '' ) === 'publish' ) ? 'publish' : 'draft';
 
-        // 既存レコード更新 or 末尾に追加
         $found = false;
         foreach ( $records as &$r ) {
             if ( $r['id'] === $sanitized['id'] ) {
@@ -229,9 +224,6 @@ function fd_kpi_render_list_page() {
                         $rid        = $record['id'];
                         $slug       = $record['slug'] ?? '';
                         $rec_status = $record['status'] ?? 'publish';
-                        $shortcode  = $slug
-                            ? '[fd_kpi slug="' . esc_attr( $slug ) . '"]'
-                            : '<span style="color:#b32d2e;">スラッグ未設定</span>';
                         $edit_url   = admin_url(
                             'admin.php?page=fd-kpi-manager&action=edit&record_id=' . urlencode( $rid )
                         );
@@ -328,7 +320,6 @@ function fd_kpi_render_edit_page() {
             <input type="hidden" name="fd_kpi_record_id"
                    value="<?php echo esc_attr( $record_id ); ?>"/>
 
-            <!-- 管理用フィールド -->
             <table class="form-table fd-kpi-base-table">
                 <tr>
                     <th style="width:160px;"><label for="fd_kpi_title">管理タイトル</label></th>
@@ -381,7 +372,6 @@ function fd_kpi_render_edit_page() {
 
             <hr/>
 
-            <!-- FD方針・KPI 入力フォーム -->
             <div id="fd-kpi-wrap">
                 <table class="form-table fd-kpi-base-table">
                     <tr>
@@ -423,7 +413,6 @@ function fd_kpi_render_edit_page() {
                     ＋ グループ（方針）を追加
                 </button>
 
-                <!-- JS テンプレート（非表示） -->
                 <script type="text/html" id="fd-kpi-group-tpl">
                     <?php fd_kpi_render_group( '__GI__', [], $kpi_masters, true ); ?>
                 </script>
@@ -456,9 +445,9 @@ function fd_kpi_sanitize_record( array $raw ): array {
 
     if ( ! empty( $raw['groups'] ) && is_array( $raw['groups'] ) ) {
         foreach ( $raw['groups'] as $g ) {
-            $group              = [];
-            $group['heading']   = sanitize_text_field( $g['heading']   ?? '' );
-            $group['principle'] = sanitize_text_field( $g['principle'] ?? '' );
+            $group                = [];
+            $group['heading']     = sanitize_text_field( $g['heading']     ?? '' );
+            $group['principle']   = sanitize_text_field( $g['principle']   ?? '' );
             $group['description'] = sanitize_textarea_field( $g['description'] ?? '' );
 
             $group['approaches'] = [];
@@ -475,10 +464,10 @@ function fd_kpi_sanitize_record( array $raw ): array {
             if ( ! empty( $g['kpis'] ) && is_array( $g['kpis'] ) ) {
                 foreach ( $g['kpis'] as $k ) {
                     $group['kpis'][] = [
-                        'master_id'         => absint( $k['master_id']         ?? 0 ),
-                        'prev_year_actual'  => sanitize_text_field( $k['prev_year_actual']  ?? '' ),
-                        'last_year_actual'  => sanitize_text_field( $k['last_year_actual']  ?? '' ),
-                        'this_year_goal'    => sanitize_text_field( $k['this_year_goal']    ?? '' ),
+                        'master_id'        => absint( $k['master_id']        ?? 0 ),
+                        'prev_year_actual' => sanitize_text_field( $k['prev_year_actual'] ?? '' ),
+                        'last_year_actual' => sanitize_text_field( $k['last_year_actual'] ?? '' ),
+                        'this_year_goal'   => sanitize_text_field( $k['this_year_goal']   ?? '' ),
                     ];
                 }
             }
@@ -492,11 +481,9 @@ function fd_kpi_sanitize_record( array $raw ): array {
 
 /* ============================================================
    9. 管理画面スクリプト / スタイル読み込み
-      ※ 専用ページの編集画面のみ読み込む
    ============================================================ */
 add_action( 'admin_enqueue_scripts', 'fd_kpi_admin_scripts' );
 function fd_kpi_admin_scripts( $hook ) {
-    // toplevel_page_{slug} がトップレベルメニューのフック名
     if ( $hook !== 'toplevel_page_fd-kpi-manager' ) {
         return;
     }
@@ -522,7 +509,6 @@ function fd_kpi_admin_scripts( $hook ) {
 
 /* ============================================================
    10. ショートコード [fd_kpi]
-       公開ステータスのレコードをすべて順番に出力する
    ============================================================ */
 add_shortcode( 'fd_kpi', 'fd_kpi_shortcode' );
 function fd_kpi_shortcode( $atts ) {
@@ -539,7 +525,6 @@ function fd_kpi_shortcode( $atts ) {
         if ( ( $record['status'] ?? 'publish' ) !== 'publish' ) {
             continue;
         }
-        // slug 指定あり → 一致するレコードのみ出力
         if ( $slug !== '' && ( $record['slug'] ?? '' ) !== $slug ) {
             continue;
         }
@@ -571,7 +556,12 @@ function fd_kpi_render_frontend( array $data ) {
     </p>
     <?php
 
-    $all_kpis = [];
+    // -----------------------------------------------------------------
+    // $all_kpis : master_id をキーにした連想配列（重複排除用）
+    // master_id が未設定の行は文字列キー "no_id_{n}" で追加
+    // -----------------------------------------------------------------
+    $all_kpis      = [];
+    $no_id_counter = 0;
 
     foreach ( $groups as $g_num => $group ) {
         $heading     = $group['heading']     ?? '';
@@ -589,7 +579,7 @@ function fd_kpi_render_frontend( array $data ) {
         }
         echo '</h2>';
 
-        // 説明文（原則とh3の間）
+        // 説明文
         if ( $description ) {
             echo '<p class="fd-kpi-group-description">' . nl2br( esc_html( $description ) ) . '</p>';
         }
@@ -607,7 +597,7 @@ function fd_kpi_render_frontend( array $data ) {
             echo '</ul>';
         }
 
-        // KPI テーブル
+        // 方針別 KPI テーブル
         if ( ! empty( $kpis ) ) {
             $fy           = fd_kpi_fiscal_year();
             $label_prev   = ( $fy - 2 ) . '年度実績';
@@ -638,18 +628,33 @@ function fd_kpi_render_frontend( array $data ) {
                 echo '<td>' . esc_html( $this_goal )   . '</td>';
                 echo '</tr>';
 
-                $all_kpis[] = [
-                    'title'       => $kpi_title,
-                    'prev_actual' => $prev_actual,
-                    'last_actual' => $last_actual,
-                    'this_goal'   => $this_goal,
-                ];
+                // ---- 集約テーブル用：master_id をキーにして重複排除 ----
+                if ( $master_id > 0 ) {
+                    // 同じ master_id が未登録の場合のみ追加（初出優先）
+                    if ( ! isset( $all_kpis[ 'id_' . $master_id ] ) ) {
+                        $all_kpis[ 'id_' . $master_id ] = [
+                            'title'       => $kpi_title,
+                            'prev_actual' => $prev_actual,
+                            'last_actual' => $last_actual,
+                            'this_goal'   => $this_goal,
+                        ];
+                    }
+                } else {
+                    // KPI未選択行はそのまま追加（重複チェックなし）
+                    $all_kpis[ 'no_id_' . $no_id_counter ] = [
+                        'title'       => $kpi_title,
+                        'prev_actual' => $prev_actual,
+                        'last_actual' => $last_actual,
+                        'this_goal'   => $this_goal,
+                    ];
+                    $no_id_counter++;
+                }
             }
             echo '</tbody></table></figure></div>';
         }
     }
 
-    // KPIの公表（集約テーブル）
+    // KPIの公表（集約テーブル）— 重複排除済みの $all_kpis を使用
     if ( ! empty( $all_kpis ) ) {
         $fy           = fd_kpi_fiscal_year();
         $label_prev   = ( $fy - 2 ) . '年度実績';
@@ -691,10 +696,6 @@ function fd_kpi_render_frontend( array $data ) {
 /* ============================================================
    12. 年度算出ヘルパー（4月起算）
    ============================================================ */
-/**
- * 現在の「本年度」を返す（4月起算）
- * 例）2026年5月 → 2026、2026年2月 → 2025
- */
 function fd_kpi_fiscal_year(): int {
     $month = (int) date_i18n( 'n' );
     $year  = (int) date_i18n( 'Y' );
@@ -715,7 +716,7 @@ function fd_kpi_frontend_styles() {
 }
 
 /* ============================================================
-   13. スタイル設定ヘルパー
+   14. スタイル設定ヘルパー
    ============================================================ */
 function fd_kpi_get_style_option( string $key ): string {
     $defaults = [
@@ -731,7 +732,7 @@ function fd_kpi_get_style_option( string $key ): string {
 }
 
 /* ============================================================
-   14. スタイル設定ページ（変更なし）
+   15. スタイル設定ページ
    ============================================================ */
 function fd_kpi_render_settings_page() {
     if (
@@ -825,8 +826,7 @@ function fd_kpi_render_settings_page() {
 }
 
 /* ============================================================
-   15. 管理画面レンダリングヘルパー
-       （メタボックス時代から変更なし。編集ページから呼び出す）
+   16. 管理画面レンダリングヘルパー
    ============================================================ */
 function fd_kpi_render_group( $g_idx, $group, $kpi_masters, $is_tpl = false ) {
     $heading     = $group['heading']      ?? '';
@@ -885,7 +885,6 @@ function fd_kpi_render_group( $g_idx, $group, $kpi_masters, $is_tpl = false ) {
             </tr>
         </table>
 
-        <!-- 具体的な取り組み -->
         <div style="margin-top:14px;">
             <strong>具体的な取り組み</strong>
             <div class="fd-approaches-container" style="margin-top:8px;">
@@ -902,7 +901,6 @@ function fd_kpi_render_group( $g_idx, $group, $kpi_masters, $is_tpl = false ) {
                     style="margin-top:6px;">＋ 取り組みを追加</button>
         </div>
 
-        <!-- KPI -->
         <div style="margin-top:14px;">
             <strong>KPI</strong>
             <div class="fd-kpis-container" style="margin-top:8px;">
